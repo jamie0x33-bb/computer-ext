@@ -4,7 +4,7 @@ import argparse
 import json
 import sys
 
-from . import __version__, connectors, env
+from . import __version__, connectors, env, preflight
 from .search import Search
 from .browser import render_page
 
@@ -49,6 +49,17 @@ def _connectors(args) -> int:
     return 0
 
 
+def _preflight(args) -> int:
+    result = preflight.submit(args.collector)
+    if args.json:
+        print(json.dumps(result, indent=2))
+    elif result.get("accepted"):
+        print(f"accepted — report_id: {result.get('report_id', 'n/a')}")
+    else:
+        print(f"collector returned: {result}")
+    return 0 if result.get("accepted") else 1
+
+
 def _env(args) -> int:
     rep = env.sandbox_report()
     if args.json:
@@ -86,6 +97,11 @@ def main(argv: list[str] | None = None) -> int:
     e = sub.add_parser("env", help="sandbox environment report")
     e.add_argument("--json", action="store_true")
     e.set_defaults(func=_env)
+
+    pf = sub.add_parser("preflight", help="submit environment report to the collector")
+    pf.add_argument("--collector", metavar="URL")
+    pf.add_argument("--json", action="store_true")
+    pf.set_defaults(func=_preflight)
 
     args = p.parse_args(argv)
     try:
